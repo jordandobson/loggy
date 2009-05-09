@@ -1,22 +1,26 @@
-require 'test/unit'
+#!/usr/bin/env ruby -w
+
 require "resolv"
 require "yaml"
+require "time"
 
 class Loggy
   VERSION = '1.0.0'
-  CACHE_7_DAYS = 604800
+  SEVEN_DAYS = 604800
+  CACHE_YAML = File.dirname(__FILE__) + "/lookup_cache.txt"
+
   
-  def initialize cache_file
+  def initialize cache_file=nil
     @cache = cache_file
   end
   
   def get_name ip
-    if !@cache[ip]
-      Resolv.getname ip
-    else
-      @cache[ip]['name']
+    unless @cache[ip] && Time.parse(@cache[ip]['expire']) > Time.now - SEVEN_DAYS
+      @cache[ip] = {}
+      @cache[ip]['name'] = Resolv.getname ip
+      @cache[ip]['expire'] = Time.now
     end
-
+    @cache[ip]['name']
   end
   
   def replace_ip line
@@ -24,4 +28,8 @@ class Loggy
     line.gsub!($1, get_name($1))
   end
   
+  def get_lines
+    # collect all lines from log file
+  end
+
 end

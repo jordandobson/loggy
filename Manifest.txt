@@ -5,3 +5,4 @@ Rakefile
 bin/loggy
 lib/loggy.rb
 test/test_loggy.rb
+test/test_cache.rb

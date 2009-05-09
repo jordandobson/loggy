@@ -1,3 +1,9 @@
 208.77.188.165:
-  name: 188-165.lax.icann.org
-  expires: Fri May 08 18:27:32 -0700 2009
+  name: www.expired.com
+  expire: Fri May 15 18:27:32 -0700 2006
+208.77.188.160:
+  name: www.from-cache.com
+  expire: Fri May 08 18:27:32 -0700 2012
+208.77.188.300:
+  name: www.is-expired.com
+  expire: Fri May 08 18:27:32 -0700 2005

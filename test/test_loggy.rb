@@ -13,25 +13,49 @@ class TestLoggy < Test::Unit::TestCase
   end
   
   def Resolv.getname ip
-    'www.example.com'
+    'www.resolved.com'
   end
   
-  def test_ip_returns_correct_name
+  def test_ip_resolves_name_uncached
     actual   = @loggy.get_name '208.77.188.166'
-    expected = 'www.example.com'
-    assert_equal expected, actual
-  end
-  
-  def test_ip_gets_replaced
-    actual = @loggy.replace_ip @text_line
-    expected = 'www.example.com - - [29/Apr/2009:16:07:38 -0700] "GET / HTTP/1.1" 200 1342'
+    expected = 'www.resolved.com'
     assert_equal expected, actual
   end
 
   def test_ip_returns_name_from_cache
-    actual   = @loggy.get_name '208.77.188.165'
-    expected = '188-165.lax.icann.org'
+    actual   = @loggy.get_name '208.77.188.160'
+    expected = 'www.from-cache.com'
     assert_equal expected, actual
+  end
+  
+  def test_ip_resolves_name_if_expired
+    actual   = @loggy.get_name '208.77.188.165'
+    expected = 'www.resolved.com'
+    assert_equal expected, actual
+  end
+  
+  def test_ip_gets_cached_if_missing
+    ip = '208.77.188.100'
+    actual  = @loggy.get_name ip
+    expected = 'www.resolved.com'
+    assert_equal = expected, @cache[ip]['name']
+  end
+  
+  def test_cached_ip_gets_updated_if_expired
+    ip = '208.77.188.300'
+    actual  = @loggy.get_name ip
+    expected = 'www.resolved.com'
+    assert_equal = expected, @cache[ip]['name']
+  end
+
+  def test_ip_gets_replaced
+    actual = @loggy.replace_ip @text_line
+    expected = 'www.resolved.com - - [29/Apr/2009:16:07:38 -0700] "GET / HTTP/1.1" 200 1342'
+    assert_equal expected, actual
+  end
+  
+  def test_something 
+    assert true
   end
 
 end
