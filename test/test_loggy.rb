@@ -17,6 +17,7 @@ class TestLoggy < Test::Unit::TestCase
     @cache = YAML.load_file "test/test_cache.yml"
     @loggy = Loggy.new @cache
     @log_file = 'test/test_log.log'
+    @temp = 'test/test_log.log' + Loggy::TEMP_EXT
   end
   
   def test_ip_resolves_name_uncached
@@ -90,62 +91,65 @@ class TestLoggy < Test::Unit::TestCase
   end
 
   def test_create_and_write_and_destory_temp_log_file
-    temp = @log_file + Loggy::TEMP_EXT
-    @loggy.delete_temp(@log_file) if File.exist?(temp)
-    assert !File.exist?(temp)
+    @loggy.delete_temp(@log_file) if File.exist?(@temp)
+    assert !File.exist?(@temp)
     
     line = "hello\n"
     
     @loggy.build_temp(@log_file, line)
-    assert File.exist?(temp)
-    assert_equal line, IO.readlines(temp)[0]
+    assert File.exist?(@temp)
+    assert_equal line, IO.readlines(@temp)[0]
     
     line2 = "goodbye"
     @loggy.build_temp(@log_file, line2) 
-    assert_equal line2, IO.readlines(temp)[1]   
+    assert_equal line2, IO.readlines(@temp)[1]   
         
     @loggy.delete_temp(@log_file)
-    assert !File.exist?(temp)
+    assert !File.exist?(@temp)
   end
   
   def test_raises_if_deleting_temp_file_that_doesnt_exist
-    temp = @log_file + Loggy::TEMP_EXT
-    # @loggy.delete_temp(@log_file)
-    assert !File.exist?(temp)
+    @loggy.delete_temp(@log_file) if File.exist?(@temp)
+    assert !File.exist?(@temp)
     assert_raise StandardError do
       @loggy.delete_temp(@log_file)
     end
   end
   
+  def test_thead_limit_is_set_under_max
+    actual = @loggy.thread_limit(1000000)
+    expected = Loggy::MAX_THREADS
+    assert_equal(expected, actual)
+  end
+  
+  def test_thead_limit_is_set_to_max_if_blank
+    actual = @loggy.thread_limit(nil)
+    expected = Loggy::MAX_THREADS
+    assert_equal(expected, actual)
+  end
+  
   def test_add_threads_method_works
-    log_file = "#{File.dirname(__FILE__)}/test_log.log"
-    temp = log_file + Loggy::TEMP_EXT
-    @loggy.delete_temp(log_file) if File.exist?(temp)
-    assert !File.exist?(temp)
-    @loggy.add_threads(10, log_file)
-    assert File.exist?(temp)
-    @loggy.delete_temp(log_file)
+    @loggy.delete_temp(@log_file) if File.exist?(@temp)
+    assert !File.exist?(@temp)
+    @loggy.add_threads(10, @log_file)
+    assert File.exist?(@temp)
+    actual = @loggy.get_lines(@temp)
+    expected = ['www.resolved.com - - [29/Apr/2009:16:07:38 -0700] "GET / HTTP/1.1" 200 1342', 'www.resolved.com - - [29/Apr/2009:16:07:44 -0700] "GET /favicon.ico HTTP/1.1" 200 1406']
+    assert expected, actual
+    @loggy.delete_temp(@log_file)
+  end
+  
+  def test_original_log_replaced_with_temp
+    @loggy.delete_temp(@log_file) if File.exist?(@temp)
+    assert !File.exist?(@temp)
+
+    @loggy.add_threads(10, @log_file)
+    temp = @loggy.get_lines(@temp)
+    new = @loggy.get_lines(@log_file)
+    @loggy.replace_log(@log_file)
+    #assert !File.exist?(@temp)
+    # assert_equal temp, original
+    # assert !File.exist?(@temp)
   end
 
-#   def test_adds_threads
-#     x = nil
-#     @loggy.add_threads(5) do
-#       x = 2 + 2
-#     end 
-#     assert_equal 4, x
-#   end
-  
-#   def test_adds_threads
-#     actual = @loggy.add_threads 5 do
-#       '&block'
-#     end
-#     assert_equal 'block', actual
-#     act = 0; 
-#     @loggy.add_threads(5) do
-#       act +=1 
-#     end 
-#     assert_equal 5, act
-#   end
-  
-  
 end

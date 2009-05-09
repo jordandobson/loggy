@@ -32,9 +32,9 @@ class Loggy
   
   def split_line line
     delimiter = ' - - '
-    l = line.split delimiter
+    l = line.split(delimiter).sort
     raise StandardError, 'Unexpected format in log' if l == [line]
-    { :ip => l[0], :info => delimiter + l[1] }
+    { :ip => "#{l[0]}", :info => "#{delimiter}#{l[1]}" }
   end
   
   def open_file path
@@ -64,7 +64,7 @@ class Loggy
     File.delete(temp)
   end
   
-  def thread_limit i
+  def thread_limit i=nil
     if i == nil || i > MAX_THREADS
       MAX_THREADS
     else
@@ -73,13 +73,13 @@ class Loggy
   end
 
   def add_threads(i, log_file)
-    n = thread_limit i.to_i
+    n = thread_limit i
     get_lines(log_file).map! { |lines|
       @queue << lines
     }
-    
+
     thread_pool = Array.new
-    
+
     n.times{
       thread_pool << Thread.new do
         until @queue.empty?
@@ -91,6 +91,12 @@ class Loggy
       end
     }
     thread_pool.each { |t| t.join }
+  end
+  
+  def replace_log org
+    temp = org + TEMP_EXT
+    File.delete(org)
+    File.rename(temp, org)
   end
 
 end
