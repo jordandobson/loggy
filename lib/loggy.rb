@@ -7,8 +7,6 @@ require "time"
 class Loggy
   VERSION = '1.0.0'
   SEVEN_DAYS = 604800
-  CACHE_YAML = File.dirname(__FILE__) + "/lookup_cache.txt"
-
   
   def initialize cache_file=nil
     @cache = cache_file
@@ -30,9 +28,24 @@ class Loggy
   
   def split_line line
     delimiter = ' - - '
-    l = line.split(delimiter)
+    l = line.split delimiter
     raise StandardError, 'Unexpected format in log' if l == [line]
     { :ip => l[0], :info => delimiter + l[1] }
+  end
+  
+  def open_file path
+    if File.exist? path
+      f = File.open path, 'r+'
+    else
+      raise StandardError, 'File was not found'
+    end
+  end
+  
+  def get_lines path
+    f = open_file path
+    lines = f.readlines
+    raise StandardError, 'Log File is empty' if lines.empty?
+    lines
   end
 
 end

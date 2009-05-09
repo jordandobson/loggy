@@ -7,9 +7,10 @@ require "yaml"
 class TestLoggy < Test::Unit::TestCase
 
   def setup
-    @log_line  = '208.77.188.166 - - [29/Apr/2009:16:07:38 -0700] "GET / HTTP/1.1" 200 1342'
-    @cache      = YAML.load_file "test/test_cache.yml"
-    @loggy      = Loggy.new @cache 
+    @log_line = '208.77.188.166 - - [29/Apr/2009:16:07:38 -0700] "GET / HTTP/1.1" 200 1342'
+    @cache = YAML.load_file "test/test_cache.yml"
+    @loggy = Loggy.new @cache
+    @log_file = 'test/test_log.log'
   end
   
   def Resolv.getname ip
@@ -62,6 +63,27 @@ class TestLoggy < Test::Unit::TestCase
   def test_raises_if_not_split
     assert_raise StandardError do
        @loggy.split_line('asdf')
+    end
+  end
+  
+  def test_file_exists
+    assert @loggy.open_file @log_file
+  end
+  
+  def test_raise_if_file_not_found
+    assert_raise StandardError do
+       @loggy.open_file "not_found.txt"
+    end
+  end
+  
+  def test_file_has_contents
+    actual = @loggy.get_lines @log_file
+    assert !actual.empty?
+  end
+  
+  def test_file_raises_on_blank_log
+    assert_raise StandardError do
+       @loggy.get_lines "test/test_log_empty.log"
     end
   end
 
