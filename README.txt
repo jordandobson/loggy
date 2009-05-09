@@ -1,26 +1,26 @@
 = loggy
 
-* FIX (url)
+* http://github.com/jordandobson/loggy/tree/master
 
 == DESCRIPTION:
 
-FIX (describe your package)
+Apache Log DNS Lookup command line tool
 
 == FEATURES/PROBLEMS:
 
-* FIX (list of features or problems)
+* Simple
 
 == SYNOPSIS:
 
-  FIX (code sample of usage)
+  Searches through apaches log and replaces IP with domain
 
 == REQUIREMENTS:
 
-* FIX (list of requirements)
+*  Computer :P
 
 == INSTALL:
 
-* FIX (sudo gem install, anything else)
+* N/A
 
 == LICENSE:
 
