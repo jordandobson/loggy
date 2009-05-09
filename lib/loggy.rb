@@ -28,8 +28,11 @@ class Loggy
     line.gsub!($1, get_name($1))
   end
   
-  def get_lines
-    # collect all lines from log file
+  def split_line line
+    delimiter = ' - - '
+    l = line.split(delimiter)
+    raise StandardError, 'Unexpected format in log' if l == [line]
+    { :ip => l[0], :info => delimiter + l[1] }
   end
 
 end

@@ -7,7 +7,7 @@ require "yaml"
 class TestLoggy < Test::Unit::TestCase
 
   def setup
-    @text_line  = '208.77.188.166 - - [29/Apr/2009:16:07:38 -0700] "GET / HTTP/1.1" 200 1342'
+    @log_line  = '208.77.188.166 - - [29/Apr/2009:16:07:38 -0700] "GET / HTTP/1.1" 200 1342'
     @cache      = YAML.load_file "test/test_cache.yml"
     @loggy      = Loggy.new @cache 
   end
@@ -49,13 +49,20 @@ class TestLoggy < Test::Unit::TestCase
   end
 
   def test_ip_gets_replaced
-    actual = @loggy.replace_ip @text_line
+    actual = @loggy.replace_ip @log_line
     expected = 'www.resolved.com - - [29/Apr/2009:16:07:38 -0700] "GET / HTTP/1.1" 200 1342'
     assert_equal expected, actual
   end
   
-  def test_something 
-    assert true
+  def test_breaks_up_log_line
+    expected = {:ip => '208.77.188.166', :info => ' - - [29/Apr/2009:16:07:38 -0700] "GET / HTTP/1.1" 200 1342'}
+    assert_equal expected, @loggy.split_line(@log_line)
+  end
+  
+  def test_raises_if_not_split
+    assert_raise StandardError do
+       @loggy.split_line('asdf')
+    end
   end
 
 end
