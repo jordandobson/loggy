@@ -9,6 +9,7 @@ class Loggy
   SEVEN_DAYS  = 604800
   TEMP_EXT    = '.temp'
   CACHE_FILE  = 'cache.yml'
+  MAX_THREADS = 100
   
   def initialize cache_file=nil
     @cache = cache_file
@@ -62,38 +63,34 @@ class Loggy
     raise StandardError, 'File does not exist to delete' if !File.exist?(temp)
     File.delete(temp)
   end
+  
+  def thread_limit i
+    if i == nil || i > MAX_THREADS
+      MAX_THREADS
+    else
+      i
+    end
+  end
 
   def add_threads(i, log_file)
-    queue = Queue.new
-    barber = Thread.new do
-      queue = get_lines(log_file).map! { |lines|
-        queue << lines
-      }
-    end
-
-    threads = (0..i-1).map {
-      Thread.new do
-        loop do
-          row = queue.shift
+    n = thread_limit i.to_i
+    get_lines(log_file).map! { |lines|
+      @queue << lines
+    }
+    
+    thread_pool = Array.new
+    
+    n.times{
+      thread_pool << Thread.new do
+        until @queue.empty?
+          row = @queue.pop
           line = split_line row
           name = get_name line[:ip]
           build_temp log_file, "#{name}#{line[:info]}"
         end
       end
     }
-
+    thread_pool.each { |t| t.join }
   end
-
-
-  
-#   def parse_log log_file, num=nil
-# 
-#     log_lines = get_lines(log_file).collect! { |l|
-#         @queue << l
-#         line = split_line l
-#         name = get_name line[:ip]
-#         build_temp log_file, "#{name}#{line[:info]}"
-#       }
-#   end
 
 end

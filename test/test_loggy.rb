@@ -118,14 +118,15 @@ class TestLoggy < Test::Unit::TestCase
   end
   
   def test_add_threads_method_works
-    temp = @log_file + Loggy::TEMP_EXT
-    @loggy.delete_temp(@log_file)
+    log_file = "#{File.dirname(__FILE__)}/test_log.log"
+    temp = log_file + Loggy::TEMP_EXT
+    @loggy.delete_temp(log_file) if File.exist?(temp)
     assert !File.exist?(temp)
-    @loggy.add_threads(1, @log_file )
+    @loggy.add_threads(10, log_file)
     assert File.exist?(temp)
-    @loggy.delete_temp(@log_file)
+    @loggy.delete_temp(log_file)
   end
-  
+
 #   def test_adds_threads
 #     x = nil
 #     @loggy.add_threads(5) do
