@@ -67,7 +67,7 @@ class TestLoggy < Test::Unit::TestCase
   end
   
   def test_file_exists
-    assert @loggy.open_file @log_file
+    assert @loggy.open_file(@log_file)
   end
   
   def test_raise_if_file_not_found
@@ -87,4 +87,30 @@ class TestLoggy < Test::Unit::TestCase
     end
   end
 
+  def test_create_and_write_and_destory_temp_log_file
+    temp = @log_file + Loggy::TEMP
+    @loggy.delete_temp(@log_file) if File.exist?(temp)
+    assert !File.exist?(temp)
+    
+    line = "hello\n"
+    
+    @loggy.build_temp(@log_file, line)
+    assert File.exist?(temp)
+    assert_equal line, IO.readlines(temp)[0]
+    
+    line2 = "goodbye"
+    @loggy.build_temp(@log_file, line2) 
+    assert_equal line2, IO.readlines(temp)[1]   
+        
+    @loggy.delete_temp(@log_file)
+    assert !File.exist?(temp)
+  end
+  
+  def test_temp_file_gets_deleted
+    # Write this
+  end
+  
+  def test_raises_if_deleting_temp_file_that_doesnt_exist
+    # Write this
+  end
 end

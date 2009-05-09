@@ -5,8 +5,9 @@ require "yaml"
 require "time"
 
 class Loggy
-  VERSION = '1.0.0'
-  SEVEN_DAYS = 604800
+  VERSION     = '1.0.0'
+  SEVEN_DAYS  = 604800
+  TEMP    = '.temp'
   
   def initialize cache_file=nil
     @cache = cache_file
@@ -35,17 +36,29 @@ class Loggy
   
   def open_file path
     if File.exist? path
-      f = File.open path, 'r+'
+      File.open path, 'r+'
     else
       raise StandardError, 'File was not found'
     end
   end
   
   def get_lines path
-    f = open_file path
-    lines = f.readlines
+    lines = open_file(path).readlines
     raise StandardError, 'Log File is empty' if lines.empty?
     lines
+  end
+  
+  def build_temp org, line
+    temp = org + TEMP
+    File.open(temp, 'a+') { |f|
+      f.write("#{line}")
+    }
+  end
+  
+  def delete_temp org
+    temp = org + TEMP
+    raise StandardError, 'File does not exist to delete' if !File.exist?(temp)
+    File.delete(temp)
   end
 
 end
