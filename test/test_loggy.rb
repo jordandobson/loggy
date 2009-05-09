@@ -145,11 +145,10 @@ class TestLoggy < Test::Unit::TestCase
 
     @loggy.add_threads(10, @log_file)
     temp = @loggy.get_lines(@temp)
-    new = @loggy.get_lines(@log_file)
     @loggy.replace_log(@log_file)
-    #assert !File.exist?(@temp)
-    # assert_equal temp, original
-    # assert !File.exist?(@temp)
+    new = @loggy.get_lines(@log_file)
+    assert !File.exist?(@temp)
+    assert_equal temp, new
   end
 
 end
