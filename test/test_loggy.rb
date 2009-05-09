@@ -4,6 +4,12 @@ require "resolv"
 require "yaml"
 
 
+class Resolv
+  def getname ip
+    'www.resolved.com'
+  end
+end
+
 class TestLoggy < Test::Unit::TestCase
 
   def setup
@@ -11,10 +17,6 @@ class TestLoggy < Test::Unit::TestCase
     @cache = YAML.load_file "test/test_cache.yml"
     @loggy = Loggy.new @cache
     @log_file = 'test/test_log.log'
-  end
-  
-  def Resolv.getname ip
-    'www.resolved.com'
   end
   
   def test_ip_resolves_name_uncached
@@ -77,8 +79,8 @@ class TestLoggy < Test::Unit::TestCase
   end
   
   def test_file_has_contents
-    actual = @loggy.get_lines @log_file
-    assert !actual.empty?
+    actual = @loggy.get_lines(@log_file)
+    assert_equal 2, actual.length
   end
   
   def test_file_raises_on_blank_log
@@ -88,7 +90,7 @@ class TestLoggy < Test::Unit::TestCase
   end
 
   def test_create_and_write_and_destory_temp_log_file
-    temp = @log_file + Loggy::TEMP
+    temp = @log_file + Loggy::TEMP_EXT
     @loggy.delete_temp(@log_file) if File.exist?(temp)
     assert !File.exist?(temp)
     
@@ -106,11 +108,43 @@ class TestLoggy < Test::Unit::TestCase
     assert !File.exist?(temp)
   end
   
-  def test_temp_file_gets_deleted
-    # Write this
+  def test_raises_if_deleting_temp_file_that_doesnt_exist
+    temp = @log_file + Loggy::TEMP_EXT
+    # @loggy.delete_temp(@log_file)
+    assert !File.exist?(temp)
+    assert_raise StandardError do
+      @loggy.delete_temp(@log_file)
+    end
   end
   
-  def test_raises_if_deleting_temp_file_that_doesnt_exist
-    # Write this
+  def test_add_threads_method_works
+    temp = @log_file + Loggy::TEMP_EXT
+    @loggy.delete_temp(@log_file)
+    assert !File.exist?(temp)
+    @loggy.add_threads(1, @log_file )
+    assert File.exist?(temp)
+    @loggy.delete_temp(@log_file)
   end
+  
+#   def test_adds_threads
+#     x = nil
+#     @loggy.add_threads(5) do
+#       x = 2 + 2
+#     end 
+#     assert_equal 4, x
+#   end
+  
+#   def test_adds_threads
+#     actual = @loggy.add_threads 5 do
+#       '&block'
+#     end
+#     assert_equal 'block', actual
+#     act = 0; 
+#     @loggy.add_threads(5) do
+#       act +=1 
+#     end 
+#     assert_equal 5, act
+#   end
+  
+  
 end
