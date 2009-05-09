@@ -1,40 +1,12 @@
 #!/usr/bin/env ruby
-require 'rubygems'
-require 'optparse'
-
+ 
 $:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
 require 'loggy'
-
-module LoggyOpt
-  def self.command
-    hsh = {}
-    OptionParser.new do |opts|
-      opts.banner = "Loggy #{Loggy::VERSION}"
-      opts.on("-t", "--threads NUMBER", Integer, "spawn up to 100 threads to
- process your logfile") do |x|
-        hsh[:num] = x
-      end
-
-      opts.on("-v", "--version", "Display verison number") do
-        STDOUT.write("Loggy #{Loggy::VERSION}\n\r")
-        return
-      end
-
-      opts.on("-h", "--help", "Show this message") do
-        puts opts
-        return
-      end
-    end.parse!
-    self.run(hsh[:num].nil? ? 1 : hsh[:num])
-  end
-
-  def self.run(num)
-    puts "this is in ARGV: #{ARGV.inspect}"
-    puts "this is the num: #{num}"
-    #http://www.ruby-doc.org/stdlib/libdoc/optparse/rdoc/index.html
-    #Loggy.new ARGV[0]
-    #Loggy.add_threads(num, ARGV[0])
-  end
+ 
+if ARGV[0] == '-t'
+  loggy = Loggy.new(ARGV[1].to_i, "#{ARGV[2]}")
+  loggy.add_threads(ARGV[1].to_i, "#{ARGV[2]}")
+else
+  loggy = Loggy.new(Loggy::MAX_THREADS, "#{ARGV[0]}")
+  loggy.add_threads(Loggy::MAX_THREADS, "#{ARGV[0]}")
 end
-
-LoggyOpt.command

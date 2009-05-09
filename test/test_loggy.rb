@@ -3,8 +3,8 @@ require "loggy"
 require "resolv"
 require "yaml"
 
-
 class Resolv
+  alias :getname_orig :getname
   def getname ip
     'www.resolved.com'
   end
@@ -15,9 +15,9 @@ class TestLoggy < Test::Unit::TestCase
   def setup
     @log_line = '208.77.188.166 - - [29/Apr/2009:16:07:38 -0700] "GET / HTTP/1.1" 200 1342'
     @cache = YAML.load_file "test/test_cache.yml"
-    @loggy = Loggy.new @cache
     @log_file = 'test/test_log.log'
-    @temp = 'test/test_log.log' + Loggy::TEMP_EXT
+    @temp = @log_file + Loggy::TEMP_EXT
+    @loggy = Loggy.new 1, @log_file, @cache
   end
   
   def test_ip_resolves_name_uncached
@@ -30,6 +30,10 @@ class TestLoggy < Test::Unit::TestCase
     actual   = @loggy.get_name '208.77.188.160'
     expected = 'www.from-cache.com'
     assert_equal expected, actual
+  end
+  
+  def test_setup_cache_works
+    # Need to do this test
   end
   
   def test_ip_resolves_name_if_expired
@@ -99,7 +103,6 @@ class TestLoggy < Test::Unit::TestCase
     @loggy.build_temp(@log_file, line)
     assert File.exist?(@temp)
     assert_equal line, IO.readlines(@temp)[0]
-    
     line2 = "goodbye"
     @loggy.build_temp(@log_file, line2) 
     assert_equal line2, IO.readlines(@temp)[1]   
@@ -142,7 +145,6 @@ class TestLoggy < Test::Unit::TestCase
   def test_original_log_replaced_with_temp
     @loggy.delete_temp(@log_file) if File.exist?(@temp)
     assert !File.exist?(@temp)
-
     @loggy.add_threads(10, @log_file)
     temp = @loggy.get_lines(@temp)
     @loggy.replace_log(@log_file)

@@ -4,5 +4,9 @@ README.txt
 Rakefile
 bin/loggy
 lib/loggy.rb
+lib/cache.yml
 test/test_loggy.rb
 test/test_cache.rb
+test/test_log.rb
+test/test_log_empty.rb
+test/log/apache_log.log

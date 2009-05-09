@@ -8,12 +8,25 @@ class Loggy
   VERSION     = '1.0.0'
   SEVEN_DAYS  = 604800
   TEMP_EXT    = '.temp'
-  CACHE_FILE  = 'cache.yml'
+  CACHE_FILE  = 'test_cache.yml'
   MAX_THREADS = 100
   
-  def initialize cache_file=nil
-    @cache = cache_file
+  # attr_accessor :amount, :log_file
+  
+  def initialize amount, log_file, cache_file=nil
+    @amount, @log_file, @cache = amount, log_file, cache_file
     @queue = Queue.new
+    @cache =  setup_cache(log_file) if @cache == nil
+  end
+  
+  def setup_cache log_file
+    if File.exist? log_file
+      #put cache file with
+      log_file =~ /(\/?.+\/)*/
+      yml = $1 + CACHE_FILE
+      open(yml, 'a+') { |f| YAML.dump({'127.0.0.1' => {:name => 'localhost', :expire => Time.now} }, f) }
+      YAML.load_file yml
+    end
   end
   
   def get_name ip
@@ -91,6 +104,7 @@ class Loggy
       end
     }
     thread_pool.each { |t| t.join }
+    #replace_log log_file
   end
   
   def replace_log org
@@ -100,3 +114,5 @@ class Loggy
   end
 
 end
+
+Loggy.new(ARGV[0], ARGV[1])if $0 == __FILE__
