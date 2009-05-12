@@ -1,56 +1,80 @@
-#!/usr/bin/env ruby -w
+require 'resolv'
+require 'yaml'
+require 'time'
+require 'fileutils'
 
-require "resolv"
-require "yaml"
-require "time"
+# Took 7:24 on big log first run
+# Took 38 seconds second time
+# Took 1 min third time
 
 class Loggy
-  VERSION     = '1.0.0'
-  SEVEN_DAYS  = 604800
-  TEMP_EXT    = '.temp'
-  CACHE_FILE  = 'test_cache.yml'
-  MAX_THREADS = 100
+
+  TEMP_EXT      = '.temp'
+  CACHE_FILE    = '.cache'
+  SEVEN_DAYS    = 604800
+  MAX_THREADS   = 100
   
-  # attr_accessor :amount, :log_file
-  
-  def initialize amount, log_file, cache_file=nil
-    @amount, @log_file, @cache = amount, log_file, cache_file
-    @queue = Queue.new
-    @cache =  setup_cache(log_file) if @cache == nil
-  end
-  
-  def setup_cache log_file
-    if File.exist? log_file
-      #put cache file with
-      log_file =~ /(\/?.+\/)*/
-      yml = $1 + CACHE_FILE
-      open(yml, 'a+') { |f| YAML.dump({'127.0.0.1' => {:name => 'localhost', :expire => Time.now} }, f) }
-      YAML.load_file yml
+  attr_accessor :cache, :log_lines, :threads, :dir
+
+  def initialize threads, log_file, yaml_obj=nil
+    @threads    = set_limit threads
+    @org        = log_file
+    @temp       = @org + TEMP_EXT
+    @log_lines  = []
+    @dir        = File.split(@org)[0]
+    
+    if yaml_obj
+      @cache    = yaml_obj
+    else
+      @cache    = prepare_cache    
     end
   end
   
-  def get_name ip
-    unless @cache[ip] && Time.parse(@cache[ip]['expire']) > Time.now - SEVEN_DAYS
-      @cache[ip] = {}
-      @cache[ip]['name'] = Resolv.getname ip
-      @cache[ip]['expire'] = Time.now
+  def run
+    get_lines
+    resolve_ips
+    write_temp
+    write_cache
+    replace_log
+  end
+
+  def get_lines
+    lines = open_log_file(@org).readlines
+    raise StandardError, 'Log File is empty' if lines.empty?
+    lines.each do |line|
+      n = @log_lines.length
+      @log_lines[n] = split_up line
     end
-    @cache[ip]['name']
   end
   
-  def replace_ip line
-    line =~ /^(.+)\s(-\s){2}/
-    line.gsub!($1, get_name($1))
+  def write_temp
+    File.delete(@temp) if File.exist?(@temp)
+    @log_lines.each do |line|
+      build_temp "#{line[:ip]}#{line[:request]}"
+    end
   end
-  
-  def split_line line
-    delimiter = ' - - '
-    l = line.split(delimiter).sort
-    raise StandardError, 'Unexpected format in log' if l == [line]
-    { :ip => "#{l[0]}", :info => "#{delimiter}#{l[1]}" }
+
+  def resolve_ips
+    @log_lines.each do |line|
+      ip = line[:ip]
+      if !@cache[ip] || Time.parse(@cache[ip]['expire'].to_s) < Time.now - SEVEN_DAYS
+        @cache[ip] = {}
+        dns = ip
+        begin
+          timeout(0.5){
+            dns = Resolv.getname ip
+          }
+        rescue Timeout::Error, Resolv::ResolvError
+          dns = "#{ip}"
+        end
+        @cache[ip]['name']    = dns
+        @cache[ip]['expire']  = Time.now.to_s
+      end
+      line[:ip] = @cache[ip]['name']
+    end
   end
-  
-  def open_file path
+
+  def open_log_file path
     if File.exist? path
       File.open path, 'r+'
     else
@@ -58,26 +82,39 @@ class Loggy
     end
   end
   
-  def get_lines path
-    lines = open_file(path).readlines
-    raise StandardError, 'Log File is empty' if lines.empty?
-    lines
+  def split_up line
+    delimiter = " - - "
+    l = line.split(delimiter)
+    raise StandardError, 'Unexpected format in log' if l == [line]
+    { :ip => "#{l[0]}", :request => "#{delimiter}#{l[1]}" }
+  end
+
+  def prepare_cache
+    cache = "#{@dir}/#{CACHE_FILE}"
+    #4 Create Cache if it doesn't exist
+    File.open(cache , 'a+') if !File.exist?(cache)
+    YAML.load_file(cache)
   end
   
-  def build_temp org, line
-    temp = org + TEMP_EXT
-    File.open(temp, 'a+') { |f|
-      f.write("#{line}")
+  def write_cache
+    cache = "#{@dir}/#{CACHE_FILE}"
+    File.open(cache, 'w' ) do |out|
+      YAML.dump( @cache, out )
+    end
+  end
+  
+  def build_temp line
+    File.open(@temp, 'a+') { |f|
+      f.puts "#{line}"
     }
   end
   
-  def delete_temp org
-    temp = org + TEMP_EXT
-    raise StandardError, 'File does not exist to delete' if !File.exist?(temp)
-    File.delete(temp)
+  def replace_log
+    File.delete(@org)
+    FileUtils.mv(@temp, @org)
   end
   
-  def thread_limit i=nil
+  def set_limit i=nil
     if i == nil || i > MAX_THREADS
       MAX_THREADS
     else
@@ -85,34 +122,31 @@ class Loggy
     end
   end
 
-  def add_threads(i, log_file)
-    n = thread_limit i
-    get_lines(log_file).map! { |lines|
-      @queue << lines
-    }
-
-    thread_pool = Array.new
-
-    n.times{
-      thread_pool << Thread.new do
-        until @queue.empty?
-          row = @queue.pop
-          line = split_line row
-          name = get_name line[:ip]
-          build_temp log_file, "#{name}#{line[:info]}"
-        end
-      end
-    }
-    thread_pool.each { |t| t.join }
-    #replace_log log_file
-  end
-  
-  def replace_log org
-    temp = org + TEMP_EXT
-    File.delete(org)
-    File.rename(temp, org)
-  end
+# 
+#   def add_threads(i, log_file)
+#     n = thread_limit i
+#     get_lines(log_file).map! { |lines|
+#       @queue << lines
+#     }
+# 
+#     thread_pool = Array.new
+# 
+#     n.times{
+#       thread_pool << Thread.new do
+#         until @queue.empty?
+#           row = @queue.pop
+#           line = split_line row
+#           name = get_name line[:ip]
+#           build_temp log_file, "#{name}#{line[:info]}"
+#         end
+#       end
+#     }
+#     thread_pool.each { |t| t.join }
+#     #replace_log log_file
+#   end  
 
 end
 
-Loggy.new(ARGV[0], ARGV[1])if $0 == __FILE__
+# Loggy.new(ARGV[0], ARGV[1])if $0 == __FILE__
+new = Loggy.new(1, '../test/log/big_backup.log') if $0 == __FILE__
+new.run if $0 == __FILE__

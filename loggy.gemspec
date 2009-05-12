@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.email = ["jordan.dobson@madebysquad.com"]
   s.executables = ["loggy"]
   s.extra_rdoc_files = ["History.txt", "Manifest.txt", "README.txt"]
-  s.files = ["History.txt", "Manifest.txt", "README.txt", "Rakefile", "bin/loggy", "lib/loggy.rb", "lib/cache.yml", "test/test_loggy.rb", "test/test_cache.yml", "test/test_log.log", "test/test_log_empty.log", "test/log/apache_log.log"]
+  s.files = ["History.txt", "Manifest.txt", "README.txt", "Rakefile", "bin/loggy", "lib/loggy.rb", "test/test_loggy.rb", "test/log/backup.log", "test/log/empty.log", "test/log/expected.cache", "test/log/expected.log", "test/log/test.cache", "test/log/test.log"]
   s.homepage = %q{http://github.com/jordandobson/loggy/tree/master}
   s.rdoc_options = ["--main", "README.txt"]
   s.require_paths = ["lib"]
