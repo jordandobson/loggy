@@ -20,46 +20,60 @@ class Loggy
     @threads    = set_limit threads
     @org        = log_file
     @temp       = @org + TEMP_EXT
-    @log_lines  = []
+    @log_lines  = Array.new
     @dir        = File.split(@org)[0]
+    @queue      = Queue.new
+    @t_pool     = Array.new
     
     if yaml_obj
       @cache    = yaml_obj
     else
       @cache    = prepare_cache    
     end
+    #run
   end
   
   def run
+    File.delete(@temp) if File.exist?(@temp)
     get_lines
-    resolve_ips
-    write_temp
-    write_cache
-    replace_log
+    add_threads
+    # write_temp
+    # write_cache
+    # replace_log
   end
 
   def get_lines
     lines = open_log_file(@org).readlines
     raise StandardError, 'Log File is empty' if lines.empty?
     lines.each do |line|
-      n = @log_lines.length
-      @log_lines[n] = split_up line
+      @log_lines << line
     end
   end
   
-  def write_temp
-    File.delete(@temp) if File.exist?(@temp)
+  def add_threads
+    #Add lines to Queue
     @log_lines.each do |line|
-      build_temp "#{line[:ip]}#{line[:request]}"
+      @queue << line
     end
+    
+    #Start Threads
+    @threads.times{
+      @t_pool << Thread.new do
+        until @queue.empty? 
+          row = @queue.pop
+          line = split_up row
+          resolve_ip line
+        end
+      end
+    }
+    @t_pool.each{ |t| t.join }
   end
 
-  def resolve_ips
-    @log_lines.each do |line|
+  def resolve_ip line
       ip = line[:ip]
+      dns = ip
+      
       if !@cache[ip] || Time.parse(@cache[ip]['expire'].to_s) < Time.now - SEVEN_DAYS
-        @cache[ip] = {}
-        dns = ip
         begin
           timeout(0.5){
             dns = Resolv.getname ip
@@ -67,11 +81,17 @@ class Loggy
         rescue Timeout::Error, Resolv::ResolvError
           dns = "#{ip}"
         end
+        
+        @cache[ip] = {}
         @cache[ip]['name']    = dns
         @cache[ip]['expire']  = Time.now.to_s
+
       end
+      
       line[:ip] = @cache[ip]['name']
-    end
+      build_temp "#{line[:ip]}#{line[:request]}"
+      line[:ip]
+
   end
 
   def open_log_file path
@@ -121,6 +141,37 @@ class Loggy
       i
     end
   end
+
+
+  def write_temp
+    File.delete(@temp) if File.exist?(@temp)
+    @t_pool.each do |line|
+      puts line
+      # build_temp "#{line[:ip]}#{line[:request]}"
+    end
+  end
+
+#   def resolve_ips
+#     @log_lines.each do |line|
+#       ip = line[:ip]
+#       if !@cache[ip] || Time.parse(@cache[ip]['expire'].to_s) < Time.now - SEVEN_DAYS
+#         @cache[ip] = {}
+#         dns = ip
+#         begin
+#           timeout(0.5){
+#             dns = Resolv.getname ip
+#           }
+#         rescue Timeout::Error, Resolv::ResolvError
+#           dns = "#{ip}"
+#         end
+#         @cache[ip]['name']    = dns
+#         @cache[ip]['expire']  = Time.now.to_s
+#       end
+#       line[:ip] = @cache[ip]['name']
+#     end
+#   end
+
+
 
 # 
 #   def add_threads(i, log_file)
