@@ -60,7 +60,7 @@ class Loggy
   end
 
   def resolve_ip line
-    dns = ip = line[:ip]
+    dns = ip = line[:ip].to_s
     if !@cache[ip] || Time.parse(@cache[ip]['expire'].to_s) < Time.now - SEVEN_DAYS
       begin
         dns   = Resolv.getname ip
@@ -84,8 +84,14 @@ class Loggy
   def prepare_cache
     cache = "#{@dir}/#{CACHE_FILE}"
     # Need a better way to create a file
-    File.open(cache , 'a+') if !File.exist?(cache)
-    YAML.load_file(cache)
+    
+    unless File.exist? cache
+      FileUtils.touch cache
+      File.open(cache, 'w') do |out| 
+        YAML.dump({'127.0.0.1' => {:url => 'localhost', :mtime => Time.now} }, out)
+      end
+    end
+      YAML.load_file(cache)
   end
   
   def write_cache
@@ -95,9 +101,9 @@ class Loggy
   end
   
   def build_temp line
-    File.open(@temp, 'a+') { |f|
+    File.open(@temp, 'a+') do |f|
       f.puts "#{line}"
-    }
+    end
   end
   
   def replace_log
