@@ -58,6 +58,8 @@ class TestLoggy < Test::Unit::TestCase
     assert        File.exist?(new_cache)
   end
 
+# Need to change this test
+# 
 #   def test_new_cache_is_blank
 #     File.delete(@cache_file) if File.exist?(@cache_file)
 #     l             = Loggy.new 50, @log_file

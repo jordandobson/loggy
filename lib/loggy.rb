@@ -79,15 +79,13 @@ class Loggy
 
   def prepare_cache
     cache = "#{@dir}/#{CACHE_FILE}"
-    # Need a better way to create a file
-    
     unless File.exist? cache
       FileUtils.touch cache
       File.open(cache, 'w') do |out| 
         YAML.dump({'127.0.0.1' => {:url => 'localhost', :mtime => Time.now} }, out)
       end
     end
-      YAML.load_file(cache)
+    YAML.load_file(cache)
   end
   
   def write_cache
