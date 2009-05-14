@@ -24,45 +24,35 @@ class Loggy
     @dir        = File.split(@org)[0]
     @queue      = Queue.new
     @t_pool     = Array.new
-    
     if yaml_obj
       @cache    = yaml_obj
     else
       @cache    = prepare_cache    
     end
-    #run
   end
   
   def run
     File.delete(@temp) if File.exist?(@temp)
     get_lines
     add_threads
-    # write_temp
-    # write_cache
-    # replace_log
+    write_cache
+    replace_log
   end
 
   def get_lines
-    lines = open_log_file(@org).readlines
-    raise StandardError, 'Log File is empty' if lines.empty?
-    lines.each do |line|
+    File.open(@org, 'r+').readlines.each do |line|
       @log_lines << line
     end
   end
   
   def add_threads
-    #Add lines to Queue
     @log_lines.each do |line|
       @queue << line
     end
-    
-    #Start Threads
     @threads.times{
       @t_pool << Thread.new do
-        until @queue.empty? 
-          row = @queue.pop
-          line = split_up row
-          resolve_ip line
+        until @queue.empty?
+          build_temp resolve_ip( split_up( @queue.pop ) )
         end
       end
     }
@@ -70,36 +60,18 @@ class Loggy
   end
 
   def resolve_ip line
-      ip = line[:ip]
-      dns = ip
-      
-      if !@cache[ip] || Time.parse(@cache[ip]['expire'].to_s) < Time.now - SEVEN_DAYS
-        begin
-          timeout(0.5){
-            dns = Resolv.getname ip
-          }
-        rescue Timeout::Error, Resolv::ResolvError
-          dns = "#{ip}"
-        end
-        
-        @cache[ip] = {}
-        @cache[ip]['name']    = dns
-        @cache[ip]['expire']  = Time.now.to_s
-
+    dns = ip = line[:ip]
+    if !@cache[ip] || Time.parse(@cache[ip]['expire'].to_s) < Time.now - SEVEN_DAYS
+      begin
+        dns   = Resolv.getname ip
+      rescue Timeout::Error, Resolv::ResolvError
+        dns   = "#{ip}"
       end
-      
-      line[:ip] = @cache[ip]['name']
-      build_temp "#{line[:ip]}#{line[:request]}"
-      line[:ip]
-
-  end
-
-  def open_log_file path
-    if File.exist? path
-      File.open path, 'r+'
-    else
-      raise StandardError, 'File was not found'
+      @cache[ip]            = {}
+      @cache[ip]['name']    = dns
+      @cache[ip]['expire']  = Time.now.to_s
     end
+    "#{@cache[ip]['name']}#{line[:request]}"
   end
   
   def split_up line
@@ -111,14 +83,13 @@ class Loggy
 
   def prepare_cache
     cache = "#{@dir}/#{CACHE_FILE}"
-    #4 Create Cache if it doesn't exist
+    # Need a better way to create a file
     File.open(cache , 'a+') if !File.exist?(cache)
     YAML.load_file(cache)
   end
   
   def write_cache
-    cache = "#{@dir}/#{CACHE_FILE}"
-    File.open(cache, 'w' ) do |out|
+    File.open("#{@dir}/#{CACHE_FILE}", 'w' ) do |out|
       YAML.dump( @cache, out )
     end
   end
@@ -142,62 +113,7 @@ class Loggy
     end
   end
 
-
-  def write_temp
-    File.delete(@temp) if File.exist?(@temp)
-    @t_pool.each do |line|
-      puts line
-      # build_temp "#{line[:ip]}#{line[:request]}"
-    end
-  end
-
-#   def resolve_ips
-#     @log_lines.each do |line|
-#       ip = line[:ip]
-#       if !@cache[ip] || Time.parse(@cache[ip]['expire'].to_s) < Time.now - SEVEN_DAYS
-#         @cache[ip] = {}
-#         dns = ip
-#         begin
-#           timeout(0.5){
-#             dns = Resolv.getname ip
-#           }
-#         rescue Timeout::Error, Resolv::ResolvError
-#           dns = "#{ip}"
-#         end
-#         @cache[ip]['name']    = dns
-#         @cache[ip]['expire']  = Time.now.to_s
-#       end
-#       line[:ip] = @cache[ip]['name']
-#     end
-#   end
-
-
-
-# 
-#   def add_threads(i, log_file)
-#     n = thread_limit i
-#     get_lines(log_file).map! { |lines|
-#       @queue << lines
-#     }
-# 
-#     thread_pool = Array.new
-# 
-#     n.times{
-#       thread_pool << Thread.new do
-#         until @queue.empty?
-#           row = @queue.pop
-#           line = split_line row
-#           name = get_name line[:ip]
-#           build_temp log_file, "#{name}#{line[:info]}"
-#         end
-#       end
-#     }
-#     thread_pool.each { |t| t.join }
-#     #replace_log log_file
-#   end  
-
 end
 
-# Loggy.new(ARGV[0], ARGV[1])if $0 == __FILE__
-new = Loggy.new(1, '../test/log/big_backup.log') if $0 == __FILE__
-new.run if $0 == __FILE__
+# new = Loggy.new(1, '../test/log/big_backup.log') if $0 == __FILE__
+# new.run if $0 == __FILE__
