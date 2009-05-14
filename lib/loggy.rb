@@ -3,10 +3,6 @@ require 'yaml'
 require 'time'
 require 'fileutils'
 
-# Took 7:24 on big log first run
-# Took 38 seconds second time
-# Took 1 min third time
-
 class Loggy
 
   TEMP_EXT      = '.temp'
