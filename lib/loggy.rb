@@ -82,7 +82,7 @@ class Loggy
     unless File.exist? cache
       FileUtils.touch cache
       File.open(cache, 'w') do |out| 
-        YAML.dump({'127.0.0.1' => {:url => 'localhost', :mtime => Time.now} }, out)
+        YAML.dump({'127.0.0.1' => {'name' => 'localhost', 'expire' => Time.now} }, out)
       end
     end
     YAML.load_file(cache)
@@ -112,7 +112,6 @@ class Loggy
       i
     end
   end
-
 end
 
 # new = Loggy.new(1, '../test/log/big_backup.log') if $0 == __FILE__

@@ -34,14 +34,14 @@ class TestLoggy < Test::Unit::TestCase
   
   def test_threads_are_set
     expected      = 1
-    actual        = Loggy.new expected, @log_file, @cache_obj
+    actual        = Loggy.new expected, @log_file
     assert_equal  expected, actual.threads
   end
 
   def test_threads_over_max_get_set_max
     expected      = Loggy::MAX_THREADS
     over_limit    = expected + 1000
-    actual        = Loggy.new over_limit, @log_file, @cache_obj
+    actual        = Loggy.new over_limit, @log_file
     assert_equal  expected, actual.threads
   end
   
@@ -58,16 +58,14 @@ class TestLoggy < Test::Unit::TestCase
     assert        File.exist?(new_cache)
   end
 
-# Need to change this test
-# 
-#   def test_new_cache_is_blank
-#     File.delete(@cache_file) if File.exist?(@cache_file)
-#     l             = Loggy.new 50, @log_file
-#     assert        File.exist?(@cache_file)
-#     assert_raise  NoMethodError do
-#       l.cache.length
-#     end
-#   end
+
+  def test_new_cache_is_contains_localhost
+    File.delete(@cache_file) if File.exist?(@cache_file)
+    l             = Loggy.new 50, @log_file
+    assert        File.exist?(@cache_file)
+    assert_equal 1, l.cache.length
+    assert_equal 'localhost', l.cache['127.0.0.1']['name']
+  end
   
   def test_uses_existing_cache
     assert        File.exist?(@cache_file)
@@ -95,7 +93,7 @@ class TestLoggy < Test::Unit::TestCase
   end
 
   def test_ip_resolves_and_caches_uncached_ip
-    l             = Loggy.new 50, @log_file, @cache_obj
+    l             = Loggy.new 50, @log_file
     l.get_lines
     line            = l.log_lines[0]
     split_line      = l.split_up line
@@ -151,14 +149,14 @@ class TestLoggy < Test::Unit::TestCase
   end
 
   def test_lines_are_imported_from_log
-    l               = Loggy.new 50, @log_file, @cache_obj
+    l               = Loggy.new 50, @log_file
     l.get_lines
     assert_equal    12, l.log_lines.length
   end
 
   def test_build_temp_creates_temp_file_and_writes
     File.delete(@temp) if File.exist?(@temp)
-    l               = Loggy.new 50, @log_file, @cache_obj
+    l               = Loggy.new 50, @log_file
     line            = "hello"
     2.times {       l.build_temp(line) }
     assert          File.exist?(@temp)
@@ -180,7 +178,7 @@ class TestLoggy < Test::Unit::TestCase
 
   def test_cache_is_written_to_cache_file_and_matches
     File.delete(@cache_file) if File.exist?(@cache_file)
-    l               = Loggy.new 50, @log_file, @cache_obj
+    l               = Loggy.new 50, @log_file
     l.get_lines
     l.add_threads
     l.write_cache
@@ -190,7 +188,7 @@ class TestLoggy < Test::Unit::TestCase
   end
 
  def test_original_log_replaced_with_temp
-    l               = Loggy.new 50, @log_file, @cache_obj
+    l               = Loggy.new 50, @log_file
     l.get_lines
     l.add_threads
     l.write_cache
@@ -204,29 +202,38 @@ class TestLoggy < Test::Unit::TestCase
     assert          !File.exist?(@temp)
  end
   
-  def test_original_is_converted_and_is_cached_and_temp_cleaned_up
+  def test_run_with_cache
     File.delete(@temp)        if File.exist?(@temp)
     File.delete(@cache_file)  if File.exist?(@cache_file)
-    
+    assert  FileUtils.compare_file("#{@log_dir}/backup.log", @log_file)
+    l               = Loggy.new 50, @log_file, @cache_obj
+    assert          !File.exist?(@cache_file)
+    l.run
+    assert_equal    12, l.cache.length
+    assert          File.exist?(@cache_file)
+    assert          !File.exist?(@temp)
+    actual_cache    = YAML.load_file(@cache_file)
+    assert_equal    l.cache, actual_cache
+    expected        = File.open("#{@log_dir}/expected.log").readlines
+    actual          = File.open(@log_file).readlines
+    assert_equal    expected, actual
+  end
+  
+  def test_run_without_existing_cache
+    File.delete(@temp)        if File.exist?(@temp)
+    File.delete(@cache_file)  if File.exist?(@cache_file)
     assert  FileUtils.compare_file("#{@log_dir}/backup.log", @log_file)
     l               = Loggy.new 50, @log_file
-    assert File.exist?(@cache_file)
+    assert          File.exist?(@cache_file)
+    assert_equal    1, l.cache.length
     l.run
-    assert l.cache
-
-
-
-    #assert_equal 0, @cache_file.length
-
-#     assert File.exist?(@cache_file)
-#     assert !File.exist?(@temp)
-#     actual_cache = YAML.load_file("#{@log_dir}/.cache")
-#     assert_equal 12, actual_cache.length
-#     expected = File.open("#{@log_dir}/expected.log").readlines
-#     actual = File.open(@log_file).readlines
-#     assert_equal expected, actual    
-#     assert FileUtils.compare_file(,   @log_file)    
-#     assert File.exist?(@cache_file)
+    assert_equal    13, l.cache.length
+    assert          File.exist?(@cache_file)
+    actual_cache    = YAML.load_file(@cache_file)
+    assert_equal    l.cache, actual_cache
+    expected        = File.open("#{@log_dir}/cache-expected.log").readlines
+    actual          = File.open(@log_file).readlines
+    assert_equal    expected, actual
   end
   
 end
